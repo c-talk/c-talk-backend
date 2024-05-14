@@ -135,20 +135,8 @@ public class FriendController {
             throw CTalkExceptionFactory.bizException(CTalkErrorCode.TODO);
         }
 
-        // TODO 需要判断好友是否存在
-        Friend friend = Friend.builder()
-                              .friendId(id)
-                              .uid(UserInfoUtil.getId())
-                              .build();
-
-        repository.insert(friend);
-
-        friend = Friend.builder()
-                       .friendId(UserInfoUtil.getId())
-                       .uid(id)
-                       .build();
-
-        repository.insert(friend);
+        this.tryAddFriend(id, UserInfoUtil.getId());
+        this.tryAddFriend(UserInfoUtil.getId(), id);
     }
 
     /**
@@ -168,5 +156,16 @@ public class FriendController {
         }
 
         repository.removeByUidAndFriendId(uid, form.getFriendId());
+    }
+
+    private void tryAddFriend(Long uid, Long friendId) {
+        if (repository.existsByUidAndFriendId(uid, friendId)) {
+            Friend friend = Friend.builder()
+                                  .friendId(friendId)
+                                  .uid(uid)
+                                  .build();
+
+            repository.insert(friend);
+        }
     }
 }
