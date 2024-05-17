@@ -88,10 +88,10 @@ public class RabbitConfig {
     }
 
     @Bean
-    public RabbitAdmin rabbitAdmin(ConnectionFactory connectionFactory) {
+    public RabbitAdmin rabbitAdmin(ConnectionFactory connectionFactory, RetryTemplate retryTemplate) {
         RabbitAdmin rabbitAdmin = new RabbitAdmin(connectionFactory);
         rabbitAdmin.setAutoStartup(true);
-        rabbitAdmin.setRetryTemplate(retryTemplate());
+        rabbitAdmin.setRetryTemplate(retryTemplate);
         return rabbitAdmin;
     }
 
