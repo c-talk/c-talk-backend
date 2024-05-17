@@ -9,6 +9,9 @@ import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.retry.backoff.FixedBackOffPolicy;
+import org.springframework.retry.policy.SimpleRetryPolicy;
+import org.springframework.retry.support.RetryTemplate;
 
 /**
  * @className: RabbitConfig
@@ -88,6 +91,15 @@ public class RabbitConfig {
     public RabbitAdmin rabbitAdmin(ConnectionFactory connectionFactory) {
         RabbitAdmin rabbitAdmin = new RabbitAdmin(connectionFactory);
         rabbitAdmin.setAutoStartup(true);
+        rabbitAdmin.setRetryTemplate(retryTemplate());
         return rabbitAdmin;
+    }
+
+    @Bean
+    public RetryTemplate retryTemplate() {
+        RetryTemplate retryTemplate = new RetryTemplate();
+        retryTemplate.setRetryPolicy(new SimpleRetryPolicy(3)); // 重试3次
+        retryTemplate.setBackOffPolicy(new FixedBackOffPolicy()); // 每次重试间隔1秒
+        return retryTemplate;
     }
 }
