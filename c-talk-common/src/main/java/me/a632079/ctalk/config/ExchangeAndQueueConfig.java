@@ -35,8 +35,8 @@ public class ExchangeAndQueueConfig {
                                         .with(routingKey);
 
         //创建
-        rabbitAdmin.declareQueue(queue);
         rabbitAdmin.declareExchange(directExchange);
+        rabbitAdmin.declareQueue(queue);
         rabbitAdmin.declareBinding(binding);
         log.info("创建私聊交换机{} 队列{}", exchange, queueName);
     }
@@ -59,8 +59,8 @@ public class ExchangeAndQueueConfig {
                                         .to(directExchange);
 
         //创建
-        rabbitAdmin.declareQueue(queue);
         rabbitAdmin.declareExchange(directExchange);
+        rabbitAdmin.declareQueue(queue);
         rabbitAdmin.declareBinding(binding);
         log.info("创建群聊交换机{} 队列{}", exchange, queueName);
     }

@@ -29,17 +29,10 @@ public class GroupMessageConsumer extends DefaultConsumer {
     @Override
     public void handleDelivery(String consumerTag, Envelope envelope,
                                AMQP.BasicProperties properties, byte[] body) throws IOException {
-        try {
-            String content = new String(body);
-            log.info("用户{} 收到 群组消息 {}", userInfo.getId(), content);
+        String content = new String(body);
+        log.info("用户{} 收到 群组消息 {}", userInfo.getId(), content);
 
-            userInfo.getClient()
-                    .sendEvent("group", content);
-
-            getChannel().basicAck(envelope.getDeliveryTag(), false);
-        } catch (Exception e) {
-            log.error("[群组消息MQ错误]", e);
-            getChannel().basicNack(envelope.getDeliveryTag(), false, true);
-        }
+        userInfo.getClient()
+                .sendEvent("group", content);
     }
 }
