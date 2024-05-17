@@ -1,12 +1,10 @@
 package me.a632079.ctalk.config;
 
+import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.ShutdownSignalException;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
-import org.springframework.amqp.rabbit.connection.Connection;
-import org.springframework.amqp.rabbit.connection.ConnectionFactory;
-import org.springframework.amqp.rabbit.connection.ConnectionListener;
+import org.springframework.amqp.rabbit.connection.*;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -59,12 +57,28 @@ public class RabbitConfig {
 
             @Override
             public void onShutDown(ShutdownSignalException signal) {
-                log.info("{}", signal.getMessage());
+                log.info("[连接关闭] {}", signal.getMessage());
+                signal.printStackTrace();
             }
 
             @Override
             public void onFailed(Exception exception) {
                 log.error(exception.getMessage());
+                exception.printStackTrace();
+            }
+        });
+
+        connectionFactory.addChannelListener(new ChannelListener() {
+
+            @Override
+            public void onCreate(Channel channel, boolean transactional) {
+                log.info("[通道创建] {}", channel.getChannelNumber());
+            }
+
+            @Override
+            public void onShutDown(ShutdownSignalException signal) {
+                log.error("[通道关闭] {}", signal.getMessage());
+                signal.printStackTrace();
             }
         });
         return connectionFactory;
