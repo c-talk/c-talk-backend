@@ -7,10 +7,7 @@ import me.a632079.ctalk.vo.MessageForm;
 import me.a632079.ctalk.vo.MessageHistoryForm;
 import me.a632079.ctalk.vo.PageVo;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 

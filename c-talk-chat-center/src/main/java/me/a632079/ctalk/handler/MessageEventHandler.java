@@ -1,8 +1,10 @@
 package me.a632079.ctalk.handler;
 
+import com.corundumstudio.socketio.AckRequest;
 import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.annotation.OnConnect;
 import com.corundumstudio.socketio.annotation.OnDisconnect;
+import com.corundumstudio.socketio.annotation.OnEvent;
 import com.rabbitmq.client.Channel;
 import lombok.extern.slf4j.Slf4j;
 import me.a632079.ctalk.config.ExchangeAndQueueConfig;
@@ -13,6 +15,7 @@ import me.a632079.ctalk.po.Token;
 import me.a632079.ctalk.po.UserInfo;
 import me.a632079.ctalk.repository.GroupMemberRepository;
 import me.a632079.ctalk.service.TokenService;
+import me.a632079.ctalk.vo.IdForm;
 import org.springframework.amqp.rabbit.connection.Connection;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.stereotype.Component;
@@ -80,14 +83,16 @@ public class MessageEventHandler {
         // 创建消息队列 接受私聊消息
         exchangeAndQueueConfig.createPrivateMessageBind(uid);
 
-        Connection connection = connectionFactory.createConnection();
-        Channel privateChannel = connection.createChannel(true);
-        Channel groupChannel = connection.createChannel(true);
+        Connection privateConnection = connectionFactory.createConnection();
+        Channel privateChannel = privateConnection.createChannel(true);
 
-        privateChannel.basicConsume("user.private." + uid, new PrivateMessageConsumer(privateChannel, info));
+        privateChannel.basicConsume("user.private." + uid, true, new PrivateMessageConsumer(privateChannel, info));
 
         info.setPrivateChannel(privateChannel);
-        info.setConnection(connection);
+        info.setPrivateConnection(privateConnection);
+
+        Connection groupConnection = connectionFactory.createConnection();
+        Channel groupChannel = privateConnection.createChannel(true);
 
         // 绑定群组消息队列
         List<GroupMember> members = groupMemberRepository.findAllByUid(uid);
@@ -97,10 +102,11 @@ public class MessageEventHandler {
         }
 
         if (!members.isEmpty()) {
-            groupChannel.basicConsume("user.group." + uid, new GroupMessageConsumer(groupChannel, info));
+            groupChannel.basicConsume("user.group." + uid, true, new GroupMessageConsumer(groupChannel, info));
         }
 
         info.setGroupChannel(groupChannel);
+        info.setGroupConnection(groupConnection);
 
         userInfoMap.put(uid, info);
     }
@@ -121,4 +127,16 @@ public class MessageEventHandler {
         log.info("用户: {} 离开服务器", uid);
     }
 
+
+    @OnEvent("join_group")
+    public void addGroup(SocketIOClient client, AckRequest request, IdForm form) {
+        Long uid = client.get("id");
+
+        UserInfo info = userInfoMap.getOrDefault(uid, null);
+
+        if (Objects.nonNull(info)) {
+            log.info("[用户新加入群组] uid:{} gid:{}", uid, form.getId());
+            exchangeAndQueueConfig.createGroupMessageBind(form.getId(), uid);
+        }
+    }
 }

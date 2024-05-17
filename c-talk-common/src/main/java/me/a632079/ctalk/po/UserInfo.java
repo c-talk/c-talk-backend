@@ -6,6 +6,8 @@ import lombok.Data;
 import org.springframework.amqp.rabbit.connection.Connection;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 /**
@@ -24,11 +26,20 @@ public class UserInfo {
     private Channel privateChannel;
     private Channel groupChannel;
 
-    private Connection connection;
+    private Connection privateConnection;
+    private Connection groupConnection;
+
+    private List<AutoCloseable> closeableList = new ArrayList<>(4);
+
+    public void addCloseAble(AutoCloseable closeable) {
+        closeableList.add(closeable);
+    }
 
     public void close() throws IOException, TimeoutException {
         privateChannel.close();
         groupChannel.close();
-        connection.close();
+
+        privateConnection.close();
+        groupConnection.close();
     }
 }

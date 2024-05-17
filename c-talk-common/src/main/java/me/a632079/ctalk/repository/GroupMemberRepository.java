@@ -20,5 +20,5 @@ public interface GroupMemberRepository extends MongoRepository<GroupMember, Long
 
     void removeByUidAndGid(Long uid, Long gid);
 
-    boolean removeByGid(Long gid);
+    void removeByGid(Long gid);
 }

@@ -1,5 +1,8 @@
 package me.a632079.ctalk.config;
 
+import cn.dev33.satoken.interceptor.SaInterceptor;
+import cn.dev33.satoken.router.SaRouter;
+import cn.dev33.satoken.stp.StpUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.a632079.ctalk.interceptor.CorsInterceptor;
 import me.a632079.ctalk.interceptor.UserInfoInterceptor;
@@ -33,6 +36,8 @@ public class MvcInterceptorConfig extends WebMvcConfigurationSupport {
     @Resource
     private ObjectMapper objectMapper;
 
+    private final List<String> excludePath = List.of("/login", "/register", "/ping", "/resources/get/*");
+
     @Override
     protected void addInterceptors(InterceptorRegistry registry) {
         super.addInterceptors(registry);
@@ -44,7 +49,14 @@ public class MvcInterceptorConfig extends WebMvcConfigurationSupport {
         // 用户信息工具类
         registry.addInterceptor(userInfoInterceptor)
                 .addPathPatterns("/**")
-                .excludePathPatterns("/login", "/register", "/ping", "/resources/get/*");
+                .excludePathPatterns(excludePath);
+
+        // satoken 校验
+        registry.addInterceptor(new SaInterceptor(handler -> {
+            SaRouter.match("/**", r -> StpUtil.checkLogin());
+        }).isAnnotation(true))
+            .addPathPatterns("/**")
+            .excludePathPatterns(excludePath);
     }
 
     /**

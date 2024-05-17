@@ -7,6 +7,8 @@ import com.rabbitmq.client.Envelope;
 import lombok.extern.slf4j.Slf4j;
 import me.a632079.ctalk.po.UserInfo;
 
+import java.io.IOException;
+
 /**
  * @className: GroupMessageConsumer
  * @description: GroupMessageConsumer - 群组消息消费
@@ -26,11 +28,18 @@ public class GroupMessageConsumer extends DefaultConsumer {
 
     @Override
     public void handleDelivery(String consumerTag, Envelope envelope,
-                               AMQP.BasicProperties properties, byte[] body) {
-        String content = new String(body);
-        log.info("用户{} 收到 群组消息 {}", userInfo.getId(), content);
+                               AMQP.BasicProperties properties, byte[] body) throws IOException {
+        try {
+            String content = new String(body);
+            log.info("用户{} 收到 群组消息 {}", userInfo.getId(), content);
 
-        userInfo.getClient()
-                .sendEvent("group", content);
+            userInfo.getClient()
+                    .sendEvent("group", content);
+
+            getChannel().basicAck(envelope.getDeliveryTag(), false);
+        } catch (Exception e) {
+            log.error("[群组消息MQ错误]", e);
+            getChannel().basicNack(envelope.getDeliveryTag(), false, true);
+        }
     }
 }

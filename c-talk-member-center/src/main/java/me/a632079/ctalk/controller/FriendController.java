@@ -131,10 +131,6 @@ public class FriendController {
      */
     @PostMapping("/add")
     public void add(@RequestParam Long id) {
-        if (!userService.exist(id)) {
-            throw CTalkExceptionFactory.bizException(CTalkErrorCode.TODO);
-        }
-
         this.tryAddFriend(id, UserInfoUtil.getId());
         this.tryAddFriend(UserInfoUtil.getId(), id);
     }
@@ -159,7 +155,7 @@ public class FriendController {
     }
 
     private void tryAddFriend(Long uid, Long friendId) {
-        if (repository.existsByUidAndFriendId(uid, friendId)) {
+        if (!repository.existsByUidAndFriendId(uid, friendId)) {
             Friend friend = Friend.builder()
                                   .friendId(friendId)
                                   .uid(uid)

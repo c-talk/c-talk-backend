@@ -37,8 +37,10 @@ public class ResourceController {
             return;
         }
 
-        response.setContentType(MediaType.valueOf(resource.getMime())
-                                         .getType());
+        // 缓存头 缓存12小时
+        response.setHeader("Cache-Control", "public, max-age=43200");
+
+        response.setContentType(resource.getMime());
         response.getOutputStream()
                 .write(resource.getBytes());
         response.flushBuffer();

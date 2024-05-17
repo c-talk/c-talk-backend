@@ -61,9 +61,8 @@ public class GroupMemberServiceImpl implements GroupMemberService {
 
     @Override
     public void deleteGroup(Long gid) {
-        if (!repository.removeByGid(gid)) {
-            // TODO 异常以及回滚策略
-        }
+        repository.removeByGid(gid);
+        // TODO 异常以及回滚策略
     }
 
     @Override

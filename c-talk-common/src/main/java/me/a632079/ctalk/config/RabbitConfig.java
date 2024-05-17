@@ -34,6 +34,12 @@ public class RabbitConfig {
         connectionFactory.setUsername(username);
         connectionFactory.setPassword(password);
         connectionFactory.setVirtualHost(virtualHost);
+        connectionFactory.setConnectionTimeout(3000);
+
+        connectionFactory.setChannelCacheSize(10);
+        connectionFactory.setCacheMode(CachingConnectionFactory.CacheMode.CONNECTION);
+
+        connectionFactory.setPublisherReturns(true);
         return connectionFactory;
     }
 
