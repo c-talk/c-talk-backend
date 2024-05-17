@@ -14,6 +14,7 @@ import me.a632079.ctalk.po.GroupMember;
 import me.a632079.ctalk.po.Token;
 import me.a632079.ctalk.po.UserInfo;
 import me.a632079.ctalk.repository.GroupMemberRepository;
+import me.a632079.ctalk.service.LockService;
 import me.a632079.ctalk.service.TokenService;
 import me.a632079.ctalk.vo.IdForm;
 import org.springframework.amqp.rabbit.connection.Connection;
@@ -54,6 +55,9 @@ public class MessageEventHandler {
     @Resource
     private GroupMemberRepository groupMemberRepository;
 
+    @Resource
+    private LockService lockService;
+
     /**
      * 成功创建连接时调用
      *
@@ -65,6 +69,7 @@ public class MessageEventHandler {
                              .getSingleUrlParam("token");
 
         Optional<Token> tokenOptional = tokenService.getToken(token);
+        // 令牌不存在
         if (tokenOptional.isEmpty()) {
             //TODO 异常原因返回
             client.disconnect();
@@ -74,41 +79,56 @@ public class MessageEventHandler {
                                 .getUid();
 
         log.info("用户: {} 接入服务器", uid);
+        lockService.lock("user#" + uid, () -> {
+            UserInfo info = userInfoMap.getOrDefault(uid, new UserInfo());
 
-        UserInfo info = new UserInfo();
-        info.setId(uid);
-        info.setClient(client);
+            // 释放之前的连接
+            if (Objects.nonNull(info.getId())) {
+                log.info("[释放用户连接] uid: {}", info.getId());
+                info.close();
+            }
 
-        client.set("id", uid);
-        // 创建消息队列 接受私聊消息
-        exchangeAndQueueConfig.createPrivateMessageBind(uid);
+            info.setId(uid);
+            info.setClient(client);
 
-        Connection privateConnection = connectionFactory.createConnection();
-        Channel privateChannel = privateConnection.createChannel(true);
+            client.set("id", uid);
+            // 创建消息队列 接受私聊消息
+            exchangeAndQueueConfig.createPrivateMessageBind(uid);
 
-        privateChannel.basicConsume("user.private." + uid, true, new PrivateMessageConsumer(privateChannel, info));
+            Connection privateConnection = connectionFactory.createConnection();
+            privateConnection.getDelegate().setId("user.private." + uid);
 
-        info.setPrivateChannel(privateChannel);
-        info.setPrivateConnection(privateConnection);
+            Channel privateChannel = privateConnection.createChannel(true);
 
-        Connection groupConnection = connectionFactory.createConnection();
-        Channel groupChannel = privateConnection.createChannel(true);
+            privateChannel.basicConsume("user.private." + uid, true, new PrivateMessageConsumer(privateChannel, info));
 
-        // 绑定群组消息队列
-        List<GroupMember> members = groupMemberRepository.findAllByUid(uid);
-        log.info("用户群组: {}", members);
-        for (GroupMember member : members) {
-            exchangeAndQueueConfig.createGroupMessageBind(member.getGid(), member.getUid());
-        }
+            info.setPrivateChannel(privateChannel);
+            info.setPrivateConnection(privateConnection);
 
-        if (!members.isEmpty()) {
-            groupChannel.basicConsume("user.group." + uid, true, new GroupMessageConsumer(groupChannel, info));
-        }
+            Connection groupConnection = connectionFactory.createConnection();
+            groupConnection.getDelegate().setId("user.group." + uid);
 
-        info.setGroupChannel(groupChannel);
-        info.setGroupConnection(groupConnection);
+            Channel groupChannel = privateConnection.createChannel(true);
 
-        userInfoMap.put(uid, info);
+            // 绑定群组消息队列
+            List<GroupMember> members = groupMemberRepository.findAllByUid(uid);
+            log.info("用户群组: {}", members);
+            for (GroupMember member : members) {
+                exchangeAndQueueConfig.createGroupMessageBind(member.getGid(), member.getUid());
+            }
+
+            if (!members.isEmpty()) {
+                groupChannel.basicConsume("user.group." + uid, true, new GroupMessageConsumer(groupChannel, info));
+            }
+
+            info.setGroupChannel(groupChannel);
+            info.setGroupConnection(groupConnection);
+
+            // 保存用户连接
+            userInfoMap.put(uid, info);
+
+            return 1;
+        });
     }
 
     @OnDisconnect
@@ -129,14 +149,18 @@ public class MessageEventHandler {
 
 
     @OnEvent("join_group")
-    public void addGroup(SocketIOClient client, AckRequest request, IdForm form) {
+    public void addGroup(SocketIOClient client, AckRequest request, IdForm form) throws IOException, TimeoutException {
         Long uid = client.get("id");
 
         UserInfo info = userInfoMap.getOrDefault(uid, null);
 
         if (Objects.nonNull(info)) {
-            log.info("[用户新加入群组] uid:{} gid:{}", uid, form.getId());
-            exchangeAndQueueConfig.createGroupMessageBind(form.getId(), uid);
+            lockService.lock("user#" + uid, () -> {
+                log.info("[用户新加入群组] uid:{} gid:{}", uid, form.getId());
+                exchangeAndQueueConfig.createGroupMessageBind(form.getId(), uid);
+
+                return 1;
+            });
         }
     }
 }

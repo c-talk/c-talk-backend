@@ -2,6 +2,7 @@ package me.a632079.ctalk.service.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import ma.glasnost.orika.MapperFacade;
 import me.a632079.ctalk.enums.ChatType;
 import me.a632079.ctalk.po.Message;
@@ -27,6 +28,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 @Service
 public class MessageServiceImpl implements MessageService {
     @Resource
@@ -62,7 +64,7 @@ public class MessageServiceImpl implements MessageService {
             info.getClient()
                 .sendEvent("private", objectMapper.writeValueAsString(message));
         } else {
-            amqpTemplate.convertAndSend("user." + uid, objectMapper.writeValueAsString(message));
+            amqpTemplate.convertAndSend("user.private." + uid, objectMapper.writeValueAsString(message));
         }
 
         return message;
@@ -72,6 +74,8 @@ public class MessageServiceImpl implements MessageService {
     public Message addGroupMessage(MessageForm form) throws JsonProcessingException {
         Message message = mapperFacade.map(form, Message.class);
         message.setChatType(ChatType.Group);
+
+        log.info("[群聊消息发送]用户{} 群组{} 发送群聊消息{}", form.getSender(), form.getReceiver(), form.getContent());
 
         // TODO 在群组中检查
         template.insert(message, message.getDocumentName());

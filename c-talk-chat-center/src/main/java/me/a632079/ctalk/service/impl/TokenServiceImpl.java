@@ -2,9 +2,11 @@ package me.a632079.ctalk.service.impl;
 
 import cn.hutool.core.util.RandomUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import me.a632079.ctalk.po.Token;
 import me.a632079.ctalk.repository.TokenRepository;
+import me.a632079.ctalk.service.LockService;
 import me.a632079.ctalk.service.TokenService;
 import org.springframework.data.domain.Example;
 import org.springframework.stereotype.Service;
@@ -30,9 +32,12 @@ public class TokenServiceImpl implements TokenService {
 
     private final static Object lock = new Object();
 
+    public final LockService lockService;
+
     @Override
+    @SneakyThrows
     public Token createToken(Long id) {
-        synchronized (lock) {
+        return (Token) lockService.lock("token#" + id, () -> {
             Token one = tokenRepository.findFirstByUid(id);
             if (Objects.nonNull(one)) {
                 return one;
@@ -45,7 +50,7 @@ public class TokenServiceImpl implements TokenService {
                                .expire(LocalDateTime.now())
                                .build();
             return tokenRepository.insert(token);
-        }
+        });
     }
 
     @Override

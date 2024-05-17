@@ -29,6 +29,8 @@ public enum CTalkErrorCode implements IErrorCode {
 
     NOT_OWNER_RESOURCE("901", "无权限操作"),
 
+    LOCK_ACQUIRE_ERROR("997", "锁获取失败"),
+
     TODO("998", "空置错误"),
 
     TEST_ERROR("999", "测试错误");

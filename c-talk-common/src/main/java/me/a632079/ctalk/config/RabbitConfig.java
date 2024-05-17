@@ -1,8 +1,12 @@
 package me.a632079.ctalk.config;
 
+import com.rabbitmq.client.ShutdownSignalException;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
+import org.springframework.amqp.rabbit.connection.Connection;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.connection.ConnectionListener;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -15,6 +19,7 @@ import org.springframework.context.annotation.Configuration;
  * @author: haoduor
  */
 
+@Slf4j
 @Data
 @Configuration
 @ConfigurationProperties("spring.rabbitmq")
@@ -40,6 +45,28 @@ public class RabbitConfig {
         connectionFactory.setCacheMode(CachingConnectionFactory.CacheMode.CONNECTION);
 
         connectionFactory.setPublisherReturns(true);
+
+        connectionFactory.addConnectionListener(new ConnectionListener() {
+
+            @Override
+            public void onCreate(Connection connection) {
+            }
+
+            @Override
+            public void onClose(Connection connection) {
+                log.info("[连接关闭] {}", connection.getDelegate().getId());
+            }
+
+            @Override
+            public void onShutDown(ShutdownSignalException signal) {
+                log.info("{}", signal.getMessage());
+            }
+
+            @Override
+            public void onFailed(Exception exception) {
+                log.error(exception.getMessage());
+            }
+        });
         return connectionFactory;
     }
 
